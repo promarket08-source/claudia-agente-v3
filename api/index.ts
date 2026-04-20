@@ -150,11 +150,14 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 }
 
 export default async (req: any, res: any) => {
+  if (req.method !== "POST") {
+    return res.status(200).send("Claudia está activa 🚀");
+  }
   try {
-    const callback = webhookCallback(bot, "vercel");
-    await callback(req, res);
+    const handler = webhookCallback(bot, "vercel");
+    return await handler(req, res);
   } catch (e) {
-    console.error(e);
-    res.status(500).send("Error en el bot");
+    console.error("Error en el bot:", e);
+    return res.status(500).send("Error interno");
   }
 };
