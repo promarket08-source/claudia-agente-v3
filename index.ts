@@ -36,7 +36,7 @@ bot.use(async (ctx, next) => {
 });
 
 bot.command("start", async (ctx) => {
-  await ctx.reply(`¡Hola! 👋\n\nSoy Claudia de Tiempo Propiedades.\n🏡 Parcelas en Villarrica\n\nUsa el menú:`, { reply_markup: menu });
+  await ctx.reply("¡Hola! 👋\n\nSoy Claudia de Tiempo Propiedades.\n🏡 Parcelas en Villarrica\n\nUsa el menú:", { reply_markup: menu });
 });
 
 bot.on("message:text", async (ctx) => {
@@ -55,34 +55,34 @@ bot.on("message:text", async (ctx) => {
   } else {
     const hist = history.get(uid) || [];
     try {
-      const prompt = `${SYSTEM_PROMPT}\n\nHistorial:\n${hist.map(h => `${h.role}: ${h.content}`).join("\n")}\n\nUsuario: ${txt}\nClaudia:`;
-      
+      const prompt = `${SYSTEM_PROMPT}\n\nHistorial:\n${hist.map((h) => `${h.role}: ${h.content}`).join("\n")}\n\nUsuario: ${txt}\nClaudia:`;
+
       const resp = await fetch(GEMINI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 512 }
-        })
+          generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+        }),
       });
-      
+
       const data = await resp.json();
       const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Hola, estoy actualizando mis datos. ¿En qué te ayudo?";
-      
+
       hist.push({ role: "user", content: txt });
       hist.push({ role: "assistant", content: reply });
       if (hist.length > 20) history.set(uid, hist.slice(-20));
-      
+
       await ctx.reply(reply);
-    } catch (e) {
+    } catch {
       await ctx.reply("Hola Roberto, estoy actualizando mis datos. ¿En qué te puedo ayudar?");
     }
   }
 });
 
-export default async function(req: any, res: any) {
+export default async function (req: any, res: any) {
   if (req.method !== "POST") return res.send("Claudia está viva 🚀");
-  
+
   try {
     await bot.handleUpdate(req.body || {});
     return res.send("ok");
