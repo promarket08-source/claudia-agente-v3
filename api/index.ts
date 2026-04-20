@@ -149,4 +149,4 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   initFirebase();
 }
 
-export default webhookCallback(bot, "std/http");
+export default webhookCallback(bot, "vercel");
