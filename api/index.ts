@@ -3,7 +3,15 @@ import { initFirebase, getTareas, getClientes } from "./firebase.js";
 import { chatWithAI } from "./ai.js";
 import { SYSTEM_PROMPT } from "./config.js";
 
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN || "");
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+console.log("🔍 TOKEN existe:", !!BOT_TOKEN);
+
+if (!BOT_TOKEN) {
+  throw new Error("Falta el TOKEN de Telegram en las variables de entorno");
+}
+
+const bot = new Bot(BOT_TOKEN);
 
 const conversationHistory = new Map<number, { role: "user" | "assistant"; content: string }[]>();
 
@@ -145,19 +153,27 @@ bot.on("message:text", async (ctx) => {
   }
 });
 
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  initFirebase();
-}
-
 export default async (req: any, res: any) => {
-  if (req.method !== "POST") {
-    return res.status(200).send("Claudia está activa 🚀");
-  }
+  console.log("📥 Request:", req.method, req.url);
+
   try {
+    if (req.method !== "POST") {
+      return res.status(200).send("Claudia está activa 🚀");
+    }
+
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      initFirebase();
+      console.log("🔥 Firebase inicializado");
+    }
+
     const handler = webhookCallback(bot, "vercel");
-    return await handler(req, res);
-  } catch (e) {
-    console.error("Error en el bot:", e);
-    return res.status(500).send("Error interno");
+    const result = await handler(req, res);
+
+    console.log("✅ Handler ejecutado");
+    return result;
+  } catch (e: any) {
+    console.error("❌ Error exacto:", e.message || e);
+    console.error("📋 Stack:", e.stack);
+    return res.status(500).send(`Error: ${e.message || "Error interno"}`);
   }
 };
