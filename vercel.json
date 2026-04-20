@@ -1,6 +1,5 @@
 {
-  "version": 2,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.ts" }
-  ]
+  "functions": {
+    "api/*.ts": { "maxDuration": 15 }
+  }
 }
