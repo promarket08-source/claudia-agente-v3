@@ -1,0 +1,20 @@
+{
+  "name": "claudia-agente-v3",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npx tsx src/api/index.ts",
+    "build": "npx tsc",
+    "start": "npx tsx src/api/index.ts"
+  },
+  "dependencies": {
+    "grammy": "^1.21.1",
+    "firebase-admin": "^12.7.0",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.3"
+  }
+}
