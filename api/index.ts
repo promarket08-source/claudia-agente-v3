@@ -4,15 +4,19 @@ import { chatWithAI } from "./ai.js";
 import { SYSTEM_PROMPT } from "./config.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const GOOGLE_KEY = process.env.GOOGLE_API_KEY;
 
-console.log("🔍 TOKEN existe:", !!BOT_TOKEN);
-console.log("🔍 GOOGLE_API_KEY existe:", !!process.env.GOOGLE_API_KEY);
+console.log("🔍 TOKEN:", !!BOT_TOKEN);
+console.log("🔍 GOOGLE:", !!GOOGLE_KEY);
 
-if (!BOT_TOKEN) {
-  throw new Error("Falta el TOKEN de Telegram");
+let bot: Bot;
+
+if (BOT_TOKEN) {
+  bot = new Bot(BOT_TOKEN);
+} else {
+  console.warn("⚠️ SIN TOKEN - Bot no configurado");
+  bot = new Bot("dummy");
 }
-
-const bot = new Bot(BOT_TOKEN);
 
 const conversationHistory = new Map<number, { role: "user" | "assistant"; content: string }[]>();
 
@@ -40,49 +44,30 @@ bot.command("start", async (ctx) => {
 });
 
 bot.command("propiedades", async (ctx) => {
-  const props = `🏡 *Tiempo Propiedades - Villarrica*\n\n` +
-    `• Parcela Chesque: $44.000.000\n` +
-    `• Parcela Cudico: $58.000.000\n` +
-    `• Parcela 5ta Faja: $48.000.000\n` +
-    `• Parcela Conquil: $65.000.000\n` +
-    `• Casa Los Volcanes: $89.000.000\n\n` +
-    `📈 Plusvalía: 4% anual`;
-  await ctx.reply(props, { parse_mode: "Markdown" });
-});
-
-bot.command("contacto", async (ctx) => {
   await ctx.reply(
-    `📞 *Roberto*\n\nWhatsApp: +56 9 7421 9730\nEmail: promarket08@gmail.com`,
+    `🏡 *Tiempo Propiedades*\n\n• Chesque: $44M\n• Cudico: $58M\n• 5ta Faja: $48M\n• Conquil: $65M\n• Los Volcanes: $89M\n\n📈 Plusvalía: 4%`,
     { parse_mode: "Markdown" }
   );
 });
 
+bot.command("contacto", async (ctx) => {
+  await ctx.reply("📞 +56 9 7421 9730", { parse_mode: "Markdown" });
+});
+
 bot.command("tareas", async (ctx) => {
-  try {
-    const tareas = await getTareas();
-    if (tareas.length === 0) {
-      await ctx.reply("No hay tareas en el dashboard.");
-      return;
-    }
-    const lista = tareas.map((t: any) => `• ${t.titulo}`).join("\n");
-    await ctx.reply(`📋 *Tareas*\n\n${lista}`, { parse_mode: "Markdown" });
-  } catch {
-    await ctx.reply("Error al cargar tareas.");
-  }
+  const tareas = await getTareas();
+  const msg = tareas.length
+    ? `📋 *Tareas*\n\n${tareas.map((t: any) => `• ${t.titulo}`).join("\n")}`
+    : "No hay tareas.";
+  await ctx.reply(msg, { parse_mode: "Markdown" });
 });
 
 bot.command("clientes", async (ctx) => {
-  try {
-    const clientes = await getClientes();
-    if (clientes.length === 0) {
-      await ctx.reply("No hay clientes.");
-      return;
-    }
-    const lista = clientes.map((c: any) => `• ${c.nombre}`).join("\n");
-    await ctx.reply(`👥 *Clientes*\n\n${lista}`, { parse_mode: "Markdown" });
-  } catch {
-    await ctx.reply("Error al cargar clientes.");
-  }
+  const clientes = await getClientes();
+  const msg = clientes.length
+    ? `👥 *Clientes*\n\n${clientes.map((c: any) => `• ${c.nombre}`).join("\n")}`
+    : "No hay clientes.";
+  await ctx.reply(msg, { parse_mode: "Markdown" });
 });
 
 bot.on("message:text", async (ctx) => {
@@ -94,21 +79,27 @@ bot.on("message:text", async (ctx) => {
   const buttons: Record<string, () => Promise<void>> = {
     "📋 Ver Tareas": async () => {
       const tareas = await getTareas();
-      const msg = tareas.length
-        ? `📋 *Tareas*\n\n${tareas.map((t: any) => `• ${t.titulo}`).join("\n")}`
-        : "No hay tareas.";
-      await ctx.reply(msg, { parse_mode: "Markdown" });
+      await ctx.reply(
+        tareas.length
+          ? `📋 *Tareas*\n\n${tareas.map((t: any) => `• ${t.titulo}`).join("\n")}`
+          : "No hay tareas.",
+        { parse_mode: "Markdown" }
+      );
     },
     "👥 Ver Clientes": async () => {
       const clientes = await getClientes();
-      const msg = clientes.length
-        ? `👥 *Clientes*\n\n${clientes.map((c: any) => `• ${c.nombre}`).join("\n")}`
-        : "No hay clientes.";
-      await ctx.reply(msg, { parse_mode: "Markdown" });
+      await ctx.reply(
+        clientes.length
+          ? `👥 *Clientes*\n\n${clientes.map((c: any) => `• ${c.nombre}`).join("\n")}`
+          : "No hay clientes.",
+        { parse_mode: "Markdown" }
+      );
     },
     "💼 Propiedades": async () => {
-      const props = `🏡 *Tiempo Propiedades*\n\n• Chesque: $44M\n• Cudico: $58M\n• 5ta Faja: $48M\n• Conquil: $65M\n• Los Volcanes: $89M\n\n📈 Plusvalía: 4%`;
-      await ctx.reply(props, { parse_mode: "Markdown" });
+      await ctx.reply(
+        "🏡 *Tiempo Propiedades*\n\n• Chesque: $44M\n• Cudico: $58M\n• 5ta Faja: $48M\n• Conquil: $65M\n• Los Volcanes: $89M\n\n📈 Plusvalía: 4%",
+        { parse_mode: "Markdown" }
+      );
     },
     "📞 Contacto": async () => {
       await ctx.reply("📞 +56 9 7421 9730", { parse_mode: "Markdown" });
@@ -124,18 +115,15 @@ bot.on("message:text", async (ctx) => {
   }
 
   const history = conversationHistory.get(userId) || [];
-  console.log("💬 Mensaje:", text);
 
   try {
     const response = await chatWithAI(text, SYSTEM_PROMPT, history);
     history.push({ role: "user", content: text });
     history.push({ role: "assistant", content: response });
-    if (history.length > 20) {
-      conversationHistory.set(userId, history.slice(-20));
-    }
+    if (history.length > 20) conversationHistory.set(userId, history.slice(-20));
     await ctx.reply(response);
   } catch (error: any) {
-    console.error("❌ Error handler:", error.message);
+    console.error("❌ Error:", error.message);
     await ctx.reply("Tuve un problema. Intenta de nuevo.");
   }
 });
@@ -143,17 +131,15 @@ bot.on("message:text", async (ctx) => {
 export default async (req: any, res: any) => {
   try {
     if (req.method !== "POST") {
-      return res.status(200).send("Claudia está activa 🚀");
+      return res.status(200).send("Claudia Agente 3.0 🚀");
     }
 
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      initFirebase();
-    }
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) initFirebase();
 
     const handler = webhookCallback(bot, "vercel");
     return await handler(req, res);
   } catch (e: any) {
-    console.error("❌ Error final:", e.message);
+    console.error("❌ Error:", e.message);
     return res.status(500).send(`Error: ${e.message}`);
   }
 };
