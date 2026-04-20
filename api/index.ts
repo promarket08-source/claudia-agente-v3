@@ -149,4 +149,12 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   initFirebase();
 }
 
-export default webhookCallback(bot, "vercel");
+export default async (req: any, res: any) => {
+  try {
+    const callback = webhookCallback(bot, "vercel");
+    await callback(req, res);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("Error en el bot");
+  }
+};
