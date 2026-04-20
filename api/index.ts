@@ -4,13 +4,12 @@ import { chatWithAI } from "./ai.js";
 import { SYSTEM_PROMPT } from "./config.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-console.log("📦 TOKEN:", !!BOT_TOKEN);
-console.log("📦 GOOGLE:", !!process.env.GOOGLE_API_KEY);
+console.log("📦 STARTING...");
 
-const bot = new Bot(BOT_TOKEN || "dummy");
-const history = new Map<number, { role: string; content: string }[]>();
+const bot = new Bot(BOT_TOKEN || "placeholder");
+const userHistory = new Map<number, { role: string; content: string }[]>();
 
-const menu = {
+const mainMenu = {
   keyboard: [
     [{ text: "📋 Tareas" }, { text: "👥 Clientes" }],
     [{ text: "💼 Propiedades" }, { text: "📞 Contacto" }],
@@ -19,77 +18,93 @@ const menu = {
 };
 
 bot.use(async (ctx, next) => {
-  if (ctx.from?.id && !history.has(ctx.from.id)) history.set(ctx.from.id, []);
+  if (ctx.from?.id && !userHistory.has(ctx.from.id)) {
+    userHistory.set(ctx.from.id, []);
+  }
   await next();
 });
 
 bot.command("start", async (ctx) => {
-  await ctx.reply(
-    `¡Hola! 👋\n\nSoy Claudia de Tiempo Propiedades.\n\n🏡 Parcelas y casas en Villarrica\n\nUsa el menú:`,
-    { reply_markup: menu }
-  );
+  const name = ctx.from?.first_name || "amigo";
+  await ctx.reply(`¡Hola ${name}! 👋\n\nSoy Claudia de Tiempo Propiedades.\n\n¿Buscas parcelas en Villarrica? 🏡\n\nUsa el menú:`, { reply_markup: mainMenu });
 });
 
 bot.command("propiedades", async (ctx) => {
-  await ctx.reply(
-    "🏡 *Tiempo Propiedades*\n• Chesque: $44M\n• Cudico: $58M\n• 5ta Faja: $48M\n• Conquil: $65M\n• Volcánes: $89M\n📈 Plusvalía: 4%",
-    { parse_mode: "Markdown" }
-  );
+  await ctx.reply("🏡 *Tiempo Propiedades*\n• Chesque: $44M\n• Cudico: $58M\n• 5ta Faja: $48M\n• Conquil: $65M\n• Volcanes: $89M\n📈 Plusvalía: 4%/año", { parse_mode: "Markdown" });
 });
 
 bot.command("contacto", async (ctx) => {
-  await ctx.reply("📞 +56 9 7421 9730");
+  await ctx.reply("📞 *Roberto*\n\nWhatsApp: +56 9 7421 9730\nEmail: promarket08@gmail.com", { parse_mode: "Markdown" });
 });
 
 bot.on("message:text", async (ctx) => {
-  const uid = ctx.from?.id;
-  const txt = ctx.message?.text || "";
-  if (!uid || txt.startsWith("/")) return;
+  const userId = ctx.from?.id;
+  const text = ctx.message?.text || "";
+  if (!userId || !text) return;
+  if (text.startsWith("/")) return;
 
-  if (txt === "📋 Tareas" || txt === "👥 Clientes" || txt === "💼 Propiedades" || txt === "📞 Contacto" || txt === "💬 Hablar") {
-    if (txt === "📋 Tareas") {
-      const data = await getTareas();
-      await ctx.reply(data.length ? `📋 *Tareas*\n\n${data.map((t: any) => `• ${t.titulo}`).join("\n")}` : "No hay tareas.", { parse_mode: "Markdown" });
-    } else if (txt === "👥 Clientes") {
-      const data = await getClientes();
-      await ctx.reply(data.length ? `👥 *Clientes*\n\n${data.map((c: any) => `• ${c.nombre}`).join("\n")}` : "No hay clientes.", { parse_mode: "Markdown" });
-    } else if (txt === "💼 Propiedades") {
-      await ctx.reply("🏡 Chesque: $44M | Cudico: $58M | 5ta Faja: $48M | Conquil: $65M | Volcánes: $89M\n📈 Plusvalía: 4%/año");
-    } else if (txt === "📞 Contacto") {
-      await ctx.reply("📞 Roberto: +56 9 7421 9730\n✉️ promarket08@gmail.com");
-    } else if (txt === "💬 Hablar") {
-      await ctx.reply("Perfecto, dime ¿qué necesitas saber?");
-    }
+  // Handle menu buttons
+  const menuActions: Record<string, () => Promise<void>> = {
+    "📋 Tareas": async () => {
+      const tareas = await getTareas();
+      await ctx.reply(tareas.length ? `📋 Tareas\n\n${tareas.map((t: any) => "• " + t.titulo).join("\n")} : "No hay tareas.");
+    },
+    "👥 Clientes": async () => {
+      const clientes = await getClientes();
+      await ctx.reply(clientes.length ? `👥 Clientes\n\n${clientes.map((c: any) => "• " + c.nombre).join("\n")} : "No hay clientes.");
+    },
+    "💼 Propiedades": async () => {
+      await ctx.reply("🏡 Chesque: $44M | Cudico: $58M | 5ta Faja: $48M | Conquil: $65M | Volcanes: $89M\n📈 Plusvalía: 4%");
+    },
+    "📞 Contacto": async () => {
+      await ctx.reply("📞 +56 9 7421 9730");
+    },
+    "💬 Hablar": async () => {
+      await ctx.reply("Perfecto, dime ¿qué necesitas?");
+    },
+  };
+
+  if (menuActions[text]) {
+    await menuActions[text]();
     return;
   }
 
-  const h = history.get(uid) || [];
+  // AI Chat
+  const history = userHistory.get(userId) || [];
+  console.log("💬 msg:", text.substring(0, 50));
+
   try {
-    const resp = await chatWithAI(txt, SYSTEM_PROMPT, h);
-    h.push({ role: "user", content: txt });
-    h.push({ role: "assistant", content: resp });
-    if (h.length > 20) history.set(uid, h.slice(-20));
-    await ctx.reply(resp);
+    const reply = await chatWithAI(text, SYSTEM_PROMPT, history);
+    history.push({ role: "user", content: text });
+    history.push({ role: "assistant", content: reply });
+    if (history.length > 20) history.splice(0, history.length - 20);
+    userHistory.set(userId, history);
+    await ctx.reply(reply);
   } catch (e: any) {
     console.error("❌ AI:", e.message);
     await ctx.reply("Tuve un problema. Intenta de nuevo.");
   }
 });
 
-export default async function handler(req: any, res: any) {
-  console.log("📥 req:", req.method, req.url);
-
-  if (req.method !== "POST") {
-    return res.status(200).send("Claudia Agente 3.0 🚀");
-  }
-
+// Vercel handler
+export default async function(req: any, res: any) {
   try {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) initFirebase();
-    const body = req.body || req;
-    await bot.handleUpdate(body);
+    if (req.method !== "POST") {
+      return res.send("Claudia 3.0 Ready 🚀");
+    }
+
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      initFirebase();
+    }
+
+    // Handle Telegram update
+    const update = req.body || {};
+    console.log("📨 update:", JSON.stringify(update).substring(0, 200));
+
+    await bot.handleUpdate(update);
     return res.status(200).send("ok");
   } catch (e: any) {
-    console.error("❌ Handler:", e.message);
-    return res.status(500).send(`Error: ${e.message}`);
+    console.error("❌:", e.message);
+    return res.status(500).send("Error: " + e.message);
   }
 }
