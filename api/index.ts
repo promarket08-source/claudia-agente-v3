@@ -1,22 +1,14 @@
-import { Bot, webhookCallback } from "grammy";
+import { Bot } from "grammy";
 import { initFirebase, getTareas, getClientes } from "./firebase.js";
 import { chatWithAI } from "./ai.js";
 import { SYSTEM_PROMPT } from "./config.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const GOOGLE_KEY = process.env.GOOGLE_API_KEY;
 
 console.log("🔍 TOKEN:", !!BOT_TOKEN);
-console.log("🔍 GOOGLE:", !!GOOGLE_KEY);
+console.log("🔍 GOOGLE:", !!process.env.GOOGLE_API_KEY);
 
-let bot: Bot;
-
-if (BOT_TOKEN) {
-  bot = new Bot(BOT_TOKEN);
-} else {
-  console.warn("⚠️ SIN TOKEN - Bot no configurado");
-  bot = new Bot("dummy");
-}
+const bot = BOT_TOKEN ? new Bot(BOT_TOKEN) : new Bot("dummy");
 
 const conversationHistory = new Map<number, { role: "user" | "assistant"; content: string }[]>();
 
@@ -45,7 +37,7 @@ bot.command("start", async (ctx) => {
 
 bot.command("propiedades", async (ctx) => {
   await ctx.reply(
-    `🏡 *Tiempo Propiedades*\n\n• Chesque: $44M\n• Cudico: $58M\n• 5ta Faja: $48M\n• Conquil: $65M\n• Los Volcanes: $89M\n\n📈 Plusvalía: 4%`,
+    "🏡 *Tiempo Propiedades*\n\n• Chesque: $44M\n• Cudico: $58M\n• 5ta Faja: $48M\n• Conquil: $65M\n• Los Volcanes: $89M\n\n📈 Plusvalía: 4%",
     { parse_mode: "Markdown" }
   );
 });
@@ -56,18 +48,22 @@ bot.command("contacto", async (ctx) => {
 
 bot.command("tareas", async (ctx) => {
   const tareas = await getTareas();
-  const msg = tareas.length
-    ? `📋 *Tareas*\n\n${tareas.map((t: any) => `• ${t.titulo}`).join("\n")}`
-    : "No hay tareas.";
-  await ctx.reply(msg, { parse_mode: "Markdown" });
+  await ctx.reply(
+    tareas.length
+      ? `📋 *Tareas*\n\n${tareas.map((t: any) => `• ${t.titulo}`).join("\n")}`
+      : "No hay tareas.",
+    { parse_mode: "Markdown" }
+  );
 });
 
 bot.command("clientes", async (ctx) => {
   const clientes = await getClientes();
-  const msg = clientes.length
-    ? `👥 *Clientes*\n\n${clientes.map((c: any) => `• ${c.nombre}`).join("\n")}`
-    : "No hay clientes.";
-  await ctx.reply(msg, { parse_mode: "Markdown" });
+  await ctx.reply(
+    clientes.length
+      ? `👥 *Clientes*\n\n${clientes.map((c: any) => `• ${c.nombre}`).join("\n")}`
+      : "No hay clientes.",
+    { parse_mode: "Markdown" }
+  );
 });
 
 bot.on("message:text", async (ctx) => {
@@ -115,6 +111,7 @@ bot.on("message:text", async (ctx) => {
   }
 
   const history = conversationHistory.get(userId) || [];
+  console.log("💬 Msg:", text);
 
   try {
     const response = await chatWithAI(text, SYSTEM_PROMPT, history);
@@ -122,24 +119,27 @@ bot.on("message:text", async (ctx) => {
     history.push({ role: "assistant", content: response });
     if (history.length > 20) conversationHistory.set(userId, history.slice(-20));
     await ctx.reply(response);
-  } catch (error: any) {
-    console.error("❌ Error:", error.message);
+  } catch (err: any) {
+    console.error("❌ AI:", err.message);
     await ctx.reply("Tuve un problema. Intenta de nuevo.");
   }
 });
 
-export default async (req: any, res: any) => {
-  try {
-    if (req.method !== "POST") {
-      return res.status(200).send("Claudia Agente 3.0 🚀");
-    }
+async function webhookHandler(req: any, res: any) {
+  if (req.method !== "POST") {
+    return res.status(200).send("Claudia Agente 3.0 🚀");
+  }
 
+  try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) initFirebase();
 
-    const handler = webhookCallback(bot, "vercel");
-    return await handler(req, res);
+    const update = req.body;
+    await bot.handleUpdate(update);
+    return res.status(200).send("ok");
   } catch (e: any) {
-    console.error("❌ Error:", e.message);
+    console.error("❌ Err:", e.message);
     return res.status(500).send(`Error: ${e.message}`);
   }
-};
+}
+
+export default webhookHandler;
