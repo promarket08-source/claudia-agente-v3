@@ -2,6 +2,9 @@
   "name": "claudia-agente-v3",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "npx tsx api/index.ts",
     "build": "",
