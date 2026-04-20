@@ -2,21 +2,35 @@
 
 Bot de Telegram con IA para Tiempo Propiedades - Villarrica
 
+## Estructura
+```
+/
+├── api/
+│   ├── index.ts      # Handler principal
+│   ├── config.ts    # System Prompt
+│   ├── firebase.ts # Firebase SDK
+│   └── ai.ts      # OpenRouter
+├── vercel.json
+└── package.json
+```
+
 ## Stack
 - Grammy (Telegram Bot)
 - OpenRouter (google/gemini-2.0-flash-lite)
 - Firebase Admin SDK
 - Vercel (Serverless)
 
-## Setup
-
-1. Copiar `.env.example` a `.env` y completar variables
-2. Deploy en Vercel
+## Deploy
+1. Importar en Vercel
+2. Configurar Environment Variables
 3. Configurar Webhook en Telegram
 
-## Comandos
-- /start - Iniciar
-- /propiedades - Ver catálogo
-- /contacto - Contacto Roberto
-- /tareas - Ver tareas Firebase
-- /clientes - Ver clientes Firebase
+## Environment Variables
+- TELEGRAM_BOT_TOKEN
+- OPENROUTER_API_KEY
+- FIREBASE_SERVICE_ACCOUNT
+
+## Webhook URL
+```
+https://tu-proyecto.vercel.app/api/index
+```
