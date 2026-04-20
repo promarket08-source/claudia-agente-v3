@@ -9,59 +9,32 @@ export function initFirebase(): void {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
-    } catch (e) {
-      console.error("Firebase init error:", e);
+      db = admin.firestore();
+      console.log("🔥 Firebase conectado");
+    } catch (e: any) {
+      console.error("❌ Firebase init error:", e.message);
     }
   }
-  db = admin.firestore();
 }
 
-export function getFirestore(): admin.firestore.Firestore {
-  if (!db) initFirebase();
-  return db!;
-}
-
-export interface Tarea {
-  id?: string;
-  titulo: string;
-  descripcion?: string;
-  estado?: "pendiente" | "completada" | "en-progreso";
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Cliente {
-  id?: string;
-  nombre: string;
-  telefono: string;
-  email?: string;
-  interes?: string;
-  presupuesto?: string;
-  notas?: string;
-  source?: string;
-  createdAt?: string;
-}
-
-export async function getTareas(): Promise<Tarea[]> {
+export async function getTareas(): Promise<any[]> {
   try {
-    const firestore = getFirestore();
-    if (!firestore) return [];
-    const snapshot = await firestore.collection("tareas").get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Tarea[];
+    if (!db) return [];
+    const snapshot = await db.collection("tareas").get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch {
-    console.error("Error getting tareas:");
+    console.log("⚠️ Error getting tareas - returning empty");
     return [];
   }
 }
 
-export async function getClientes(): Promise<Cliente[]> {
+export async function getClientes(): Promise<any[]> {
   try {
-    const firestore = getFirestore();
-    if (!firestore) return [];
-    const snapshot = await firestore.collection("clientes").get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Cliente[];
+    if (!db) return [];
+    const snapshot = await db.collection("clientes").get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch {
-    console.error("Error getting clientes:");
+    console.log("⚠️ Error getting clientes - returning empty");
     return [];
   }
 }
